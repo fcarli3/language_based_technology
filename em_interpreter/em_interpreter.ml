@@ -2,7 +2,7 @@
 (* ide for variables *)
 type ide = string
 
-(* Acl to check if can do op *)
+(* Acl to check if an operation is allowed *)
 type acl = 
 | Empty
 | Acl of string * acl (* string is operation OR FUNCTION NAME *)
@@ -34,10 +34,10 @@ type exp =
 
   (* Fun is anonymous => it hasn't a name! 'ide' is the formal parameter!
   i.e f(x) = x + 1  => x is the formal parameter, x + 1 is the body*)
-  | Fun of ide * exp  (* formal parameter with function body  Plus | Minus | Mul | Div *)
-  | Call of exp * exp (* Fun with acutal parameter *)
+  | Fun of ide * exp  (* formal parameter with function body *)
+  | Call of exp * exp (* Fun with actual parameter *)
 
-(* environment is a couple list of ide with their value *)
+(* environment is a list of pairs (ide, value) *)
 type 'v env = (string * 'v)list
       
 type value =
@@ -51,8 +51,8 @@ type value =
 let bind (var: string) (value: value) (env: 'v env) =
   (var, value)::env
 
-(* check if var has a assocviated value in the environment env *)
-let rec lookup(env: 'v env) (var: string): value = match env with
+(* check if var has an associated value in the environment env *)
+let rec lookup (env: 'v env) (var: string): value = match env with
   | [] -> failwith(var ^ " not found")
   | (ide, value)::envs -> 
     if (ide = var) then
@@ -77,25 +77,15 @@ let rec extend_policies (global_acl: acl) (local_acl: acl) : acl =
    | Empty -> global_acl
    | Acl(op, acls) -> Acl(op, extend_policies global_acl acls)
 
-(* extend the GLOBAL ACL with LOCAL ACL introduced by EM
-let fast_extend_policies (global_acl: acl) (local_acl: acl) : acl =
-  (* use power of recursion! *)
-  let rec extend_policies_accum (local_acl: acl) : acl = 
-    match local_acl with
-   | Empty -> global_acl
-   | Acl(op, acls) -> Acl(op, global_acl); extend_policies_accum acls
-  in extend_policies_accum local_acl
- *)
-
 (* ---- THE INTERPRETER ---- *)
 
-(* check for integer overflow NOT COVER ALL CASE (not important for now) *)
-let check_integer_overflow(x: int) (y: int): unit = 
+(* check for integer overflow in sum *)
+let check_integer_overflow (x: int) (y: int): unit = 
     (* if x > 0 && y > 0 and their sum is < 0 => integer overflow *)
   if (x > 0 && y > 0 && x + y < 0) then
     failwith("Integer overflow detected: you can't hack this system")
 
-(* evaluate my language: interpreter *)
+(* interpreter *)
 let rec eval (exp: exp) (env: 'v env) (acl: acl): value = match exp with
   | Eint x -> Int x
   | Ebool b -> Bool b
@@ -104,9 +94,9 @@ let rec eval (exp: exp) (env: 'v env) (acl: acl): value = match exp with
       begin match eval guardia env acl with (* evaluate guardia *)
       | Bool b -> 
         if (b) then
-          eval t env acl (* ramo then *)
+          eval t env acl (* then branch *)
         else 
-          eval e env acl (* ramo else *)
+          eval e env acl (* else branch *)
       | _ -> failwith("not a valid statement")
       end 
   | Plus(x, y) -> 
@@ -177,9 +167,9 @@ let rec eval (exp: exp) (env: 'v env) (acl: acl): value = match exp with
           begin
             match (eval x env acl, eval y env acl) with
               | (Int x, Int y) -> Bool(x = y)
-              | (_, _) -> failwith("Not int")
+              | (_, _) -> failwith("Not int!")
           end        
-        else failwith("Operation not supported")
+        else failwith("Operation not supported!")
   | Let(ide, value, body) ->
     (* "calculate" value ... *)
       let v = eval value env acl in 
@@ -191,7 +181,7 @@ let rec eval (exp: exp) (env: 'v env) (acl: acl): value = match exp with
           if check_op acl ide then
             eval body new_env acl
           else 
-            failwith ("This function cannot be called")
+            failwith ("This function cannot be called!")
         | _ ->  eval body new_env acl (* ... and use it in the body *)
       end
   (* introduce local policy thanks to EM *)
@@ -216,7 +206,7 @@ let rec eval (exp: exp) (env: 'v env) (acl: acl): value = match exp with
         | Minus(_, _) -> Func(var, exp, env)
         | Mul(_, _) -> Func(var, exp, env)
         | Div(_, _) -> Func(var, exp, env)
-        | _ -> failwith ("Ahah")
+        | _ -> failwith ("Undefined operation!")
       end
   (* Call a function f with p actual parameter 
   i.e f(x) = x + 1 => f(5) = 6 *)
