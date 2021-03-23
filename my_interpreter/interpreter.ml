@@ -1,20 +1,20 @@
- (* TIPI DEL LINGUAGGIO *)
+ (* TYPES *)
  type value = 
   | Int of int
   | Bool of bool
   | String of string;;
 
-(*  AMBIENTE *)
+(*  ENVIRONMENT *)
 type env = (string*value) list;;
 
-(* ESPRESSIONI DEL LINGUAGGIO *)
+(* EXPRESSIONS *)
 type expr =
   | EInt of int
   | Ebool of bool
   | Estring of string
   | Evar of string
   | Let of string * expr
-  | LetIn of string * expr * expr (* string=identificatore della variabile, expr=valore della variabile, expr=corpo dove valuto e utilizzo la variabile*)
+  | LetIn of string * expr * expr 
   | Plus of expr * expr
   | Minus of expr * expr
   | Mul of expr * expr
@@ -25,17 +25,13 @@ type expr =
   | Major of expr * expr
   | IfThenElse of expr * expr * expr;;
 
-(* 
-  FUNZIONE DI LOOKUP 
-
-  Cerca il valore di una variabile nell'ambiente
-*)
+(* LOOKUP FUNCTION, SEARCH THE VALUE FOR THE GIVEN STRING IN THE ENVIRONMENT *)
 let rec lookup (env : env) (s : string) : value =
   match env with
-  | [] -> failwith("Var not found!")
+  | [] -> failwith("ERROR: Var not found!")
   | (i,v)::r -> if i=s then v else lookup r s;;
 
-(* INTERPRETE *)
+(* INTERPRETER *)
 let rec eval (e : expr) (env : env) : (value*env) =
   match e with
   | EInt i -> (Int i, env)
@@ -44,9 +40,9 @@ let rec eval (e : expr) (env : env) : (value*env) =
   | Evar v -> (lookup env v, env)
   | Let(s,e) -> let (_value, _) = eval e env in
                   let new_env = (s,_value)::env in
-                    (Bool true,new_env) (* la mia assunzione è che restituisco true perché ho modificato l'env *)
+                    (Bool true,new_env) (* in this case return a pair where the first elem says that the environment has been modified  *)
   | LetIn(s,v,body) -> let (_value,_) = eval v env in
-                        let new_env = (s,_value)::env in (* qua è come se facessi una push sullo stack, il body potrà usare ciò che ho aggiunto *)
+                        let new_env = (s,_value)::env in (* It is something like a push on the stack *)
                           eval body new_env
   | Plus(op1,op2) -> let (x1,_) = eval op1 env in
                       let (x2,_) = eval op2 env in
@@ -105,5 +101,5 @@ let rec eval (e : expr) (env : env) : (value*env) =
 
 (* MAIN *)
 let myEnv : env = [];;
-let (_,new_env) = eval (Let("x",EInt 10)) myEnv;;
-eval (Let("y",EInt 10)) new_env;;
+let (_, new_env) = eval (Let("x", EInt 10)) myEnv;;
+eval (Let("y", EInt 10)) new_env;;
